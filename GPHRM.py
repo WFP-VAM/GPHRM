@@ -8,11 +8,11 @@ from sklearn.model_selection import KFold
 
 # r square for bayesian prediction - computes distribution of r2 values
 def r2_Bayes(prAct,prHat,prStd,seed=42):
-	'''
-	prAct = vector of actual prevalence from dataset
-	prHat = vector of model estimated prevalence means
-	prStd = vector of model estimates prevalence standard deviation 
-	'''
+    """
+    prAct = vector of actual prevalence from dataset
+    prHat = vector of model estimated prevalence means
+    prStd = vector of model estimates prevalence standard deviation 
+    """
     
     prng1 = np.random.RandomState(seed)
     seeds = prng1.randint(low=1,high=10e6,size=1000)
@@ -54,6 +54,10 @@ robjects.r('memory.limit(4096)')
 # trainPredictGP - convenience function which combines fitPrevGP and prdPrevGP for the purpose of k-fold cross-val                #
 # see 'PrevMap an R Package for Prevalence Mapping' by E. Giorgi (https://www.jstatsoft.org/article/view/v078i08)                 #
 # ------------------------------------------------------------------------------------------------------------------------------- #
+import os
+abspath = os.path.abspath(__file__)
+dname = os.path.dirname(abspath)
+os.chdir(dname)
 
 with open('rGPHRM.R', 'r') as f:
     string = f.read()
@@ -105,11 +109,11 @@ class GPmodeller:
     #performs k-fold cross val        
     @staticmethod
     def _k_fold_cross_validation(X,K,n,seed=42):
-    	'''
-    	X = training data pandas dataframe
-		K = number of cross-vals
-		n = number of random-restarts of k cross-vals, i.e. cross-val performed k*n times
-    	'''
+        '''
+        X = training data pandas dataframe
+        K = number of cross-vals
+        n = number of random-restarts of k cross-vals, i.e. cross-val performed k*n times
+        '''
 
         j = 0
         prng = np.random.RandomState(seed)
@@ -125,24 +129,24 @@ class GPmodeller:
 
     @staticmethod
     def trainPredict(kappa,dfTrnY,dfTrnX,dfTstX,dfTrnGPS,dfTstGPS,method='auto',z='auto',xCDThresh=[0.05,0.1,0.2,0.35,0.5]):
-    	"""
-    	combines train and test in a single call for convenience when doing k-fold CV -> returns predictions on test data
-    	kappa    = shape parameter for GP Matern kernel
-    	dfTrnX   = training data features
-    	dfTrnY   = training data targets (two columns: |n successes|n failures|)
-    	dfTrnGPS = training data GPS coordinates (two columns: |lat|lng|)
-    	dfTstX   = test data features
-    	dfTstGPS = test data GPS coordinates (two columns: |lat|lng|)
-    	method   = method to train model, can choose either
-    			   'Bayes' which uses the Markov Chain Monte Carlo approach (slow but robust)
-    			   'MCML'  which uses Markov Chain Maximum Likelihood approach (faster but more prone to error)
-    			   'auto'  which heuristically chooses between the two
-    	z        = sets Markov Chain optimizer parameters which by is set to
-    			   iterations = max(2000,5000*z) and burn = max(1000,1000*z)
-    	xCDThresh= exceedance thresholds, predictions include probabilities prevalence exceeds the
-    			   defined thresholds in this vector
+        """
+        combines train and test in a single call for convenience when doing k-fold CV -> returns predictions on test data
+        kappa    = shape parameter for GP Matern kernel
+        dfTrnX   = training data features
+        dfTrnY   = training data targets (two columns: |n successes|n failures|)
+        dfTrnGPS = training data GPS coordinates (two columns: |lat|lng|)
+        dfTstX   = test data features
+        dfTstGPS = test data GPS coordinates (two columns: |lat|lng|)
+        method   = method to train model, can choose either
+                   'Bayes' which uses the Markov Chain Monte Carlo approach (slow but robust)
+                   'MCML'  which uses Markov Chain Maximum Likelihood approach (faster but more prone to error)
+                   'auto'  which heuristically chooses between the two
+        z        = sets Markov Chain optimizer parameters which by is set to
+                   iterations = max(2000,5000*z) and burn = max(1000,1000*z)
+        xCDThresh= exceedance thresholds, predictions include probabilities prevalence exceeds the
+                   defined thresholds in this vector
 
-    	"""
+        """
 
         #Convert from pandas dataframe to R dataframe trainX,trainY,trainGPS,testX,testGPS
         rdfTrnY = pandas2ri.py2ri(dfTrnY)
@@ -155,7 +159,7 @@ class GPmodeller:
         rXCDThresh = robjects.vectors.FloatVector(xCDThresh)
         
         # ------------------------------------------------------------------------------------ #
-        # Call R function and return results 												   #
+        # Call R function and return results                                                   #
         # R function Arguments: kappa,trainX,trainY,trainGPS,testX,testGPS,method,z, xCDThresh #
         # ------------------------------------------------------------------------------------ #
         rslt = GPHRM.trainPredictGP(kappa,rdfTrnX,rdfTrnY,rdfTrnGPS,rdfTstX,rdfTstGPS,method,z,rXCDThresh)
@@ -164,20 +168,20 @@ class GPmodeller:
         return dfRslt
 
     def train(self,kappa,method='Bayes',z=2,fitTwice='auto'):
-    	"""
-    	trains model from  intiial X, Y, GPS dataframes that the object was instantiated with
-			-> returns self with model as attribute
-    	kappa    = shape parameter for GP Matern kernel
-    	method   = method to train model, can choose either
-    			   'Bayes' which uses the Markov Chain Monte Carlo approach (slow but robust)
-    			   'MCML'  which uses Markov Chain Maximum Likelihood approach (faster but more prone to error)
-    			   'auto'  which heuristically chooses between the two
-    	z        = sets Markov Chain optimizer parameters which by is set to
-    			   iterations = max(2000,5000*z) and burn = max(1000,1000*z)
-    	fitTwice = for final training we recommend fitting the model twice, using the estimated parameters
-    			   from the initial fit as priors for the second fit, can be set to True, False, or 'auto'
+        """
+        trains model from  intiial X, Y, GPS dataframes that the object was instantiated with
+            -> returns self with model as attribute
+        kappa    = shape parameter for GP Matern kernel
+        method   = method to train model, can choose either
+                   'Bayes' which uses the Markov Chain Monte Carlo approach (slow but robust)
+                   'MCML'  which uses Markov Chain Maximum Likelihood approach (faster but more prone to error)
+                   'auto'  which heuristically chooses between the two
+        z        = sets Markov Chain optimizer parameters which by is set to
+                   iterations = max(2000,5000*z) and burn = max(1000,1000*z)
+        fitTwice = for final training we recommend fitting the model twice, using the estimated parameters
+                   from the initial fit as priors for the second fit, can be set to True, False, or 'auto'
 
-    	"""
+        """
 
         #Convert from pandas dataframe to R dataframe trainX,trainY,trainGPS
         rdfTrnY = pandas2ri.py2ri(self.Y)
@@ -185,7 +189,7 @@ class GPmodeller:
         rdfTrnGPS = pandas2ri.py2ri(self.GPS)
 
         # ------------------------------------------------------------------- #
-        # Call R function and return results 								  #
+        # Call R function and return results                                  #
         # R function Arguments: kappa,trainX,trainGPS,testX,method,z,fitTwice #
         # ------------------------------------------------------------------- #
         self.model = GPHRM.fitPrevGP(rdfTrnGPS,rdfTrnY,rdfTrnX,kappa,method=method,z=z,fitTwice=fitTwice)
@@ -193,13 +197,13 @@ class GPmodeller:
         return self
 
     def predict(self,dfPrdX,dfPrdGPS,xCDThresh=[0.05,0.1,0.2,0.35,0.5]):
-    	"""
-    	performs predictions on new data given model -> returns self with new predictions as an attribute
-    	dfTstX   = test data features
-    	dfTstGPS = test data GPS coordinates (two columns: |lat|lng|)
-    	xCDThresh= exceedance thresholds, predictions include probabilities prevalence exceeds the
-    			   defined thresholds in this vector
-    	"""
+        """
+        performs predictions on new data given model -> returns self with new predictions as an attribute
+        dfTstX   = test data features
+        dfTstGPS = test data GPS coordinates (two columns: |lat|lng|)
+        xCDThresh= exceedance thresholds, predictions include probabilities prevalence exceeds the
+                   defined thresholds in this vector
+        """
         
         self.prdX = dfPrdX
         self.prdGPS = dfPrdGPS
@@ -212,7 +216,7 @@ class GPmodeller:
         rXCDThresh = robjects.vectors.FloatVector(xCDThresh)
 
         # --------------------------------------------------- #
-        # Call R function and return results 				  #
+        # Call R function and return results                  #
         # R function Arguments: model,testX,testGPS,xCDThresh #
         # --------------------------------------------------- #
         rslt = GPHRM.prdPrevGP(self.model,rdfPrdGPS,rdfPrdX,rXCDThresh,returnDF=True)
@@ -224,9 +228,9 @@ class GPmodeller:
     def evaluate(self,k,n,kappa_list,seed=42):
         """
         Performs k-fold cross-val across all values of kappa in kappa_list
-		k = number of cross-vals
-		n =  number of random-restars for cross-vals
-		kappa_list = vector of kappa parameters to try
+        k = number of cross-vals
+        n =  number of random-restars for cross-vals
+        kappa_list = vector of kappa parameters to try
         """
         
         self.kappa_list = kappa_list
@@ -305,31 +309,35 @@ import sqlalchemy
 from sqlalchemy import Column, Integer, Float, String, create_engine  
 from sqlalchemy.dialects.postgresql import JSON, JSONB
 
-#sys.path.append('..') 
+import inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir)
 import HRM
-from .HRMutils import tifgenerator
-from .HRMutils import aggregate
-from .HRMutils import points_to_polygon
+
+from HRMutils import tifgenerator
+from HRMutils import aggregate
+from HRMutils import points_to_polygon
 
 def score(trainID,scoreID,kappa,method='Bayes',z=2,fitTwice='auto',whiten=False):
-	"""
-	function to train and score model given dataset IDs from database and training parameters
-	trainID = overloaded parameter-either 
-			 (a) database ID of training dataset 
-			 (b) filepath for already trained model (as a pickled GPModeller object)
-	scoreID = databaise ID for prediction dataset
-	kappa    = shape parameter for GP Matern kernel
-	method   = method to train model, can choose either
-			   'Bayes' which uses the Markov Chain Monte Carlo approach (slow but robust)
-			   'MCML'  which uses Markov Chain Maximum Likelihood approach (faster but more prone to error)
-			   'auto'  which heuristically chooses between the two
-	z        = sets Markov Chain optimizer parameters which by is set to
-			   iterations = max(2000,5000*z) and burn = max(1000,1000*z)
-	fitTwice = for final training we recommend fitting the model twice, using the estimated parameters
-			   from the initial fit as priors for the second fit, can be set to True, False, or 'auto'
-	Whiten = perform ZCA and feature selection on features (True/False)
+    """
+    function to train and score model given dataset IDs from database and training parameters
+    trainID = overloaded parameter-either 
+             (a) database ID of training dataset 
+             (b) filepath for already trained model (as a pickled GPModeller object)
+    scoreID = databaise ID for prediction dataset
+    kappa    = shape parameter for GP Matern kernel
+    method   = method to train model, can choose either
+               'Bayes' which uses the Markov Chain Monte Carlo approach (slow but robust)
+               'MCML'  which uses Markov Chain Maximum Likelihood approach (faster but more prone to error)
+               'auto'  which heuristically chooses between the two
+    z        = sets Markov Chain optimizer parameters which by is set to
+               iterations = max(2000,5000*z) and burn = max(1000,1000*z)
+    fitTwice = for final training we recommend fitting the model twice, using the estimated parameters
+               from the initial fit as priors for the second fit, can be set to True, False, or 'auto'
+    Whiten = perform ZCA and feature selection on features (True/False)
 
-	"""
+    """
 
     if ~isinstance(whiten,bool):
         whiten = str(whiten) in ['TRUE','True','true','t','T', '1','Yes','Y','y','yes','YES','yeah','yup', 'certainly', 'uh-huh']
@@ -441,12 +449,12 @@ def score(trainID,scoreID,kappa,method='Bayes',z=2,fitTwice='auto',whiten=False)
         print('finished generating tif - located at:'+outfile)
 
 def run(id,whiten=False,kappaList=[0.5,1.5,2.5]):
-	"""
-	function to perform 5-fold cross-val on each value of kappaList given a dataset from the database
-	id = Database ID for training data
-	whiten = perform ZCA and feature selection on features (True/False)
-	kappaList = list of kappa values to try
-	"""
+    """
+    function to perform 5-fold cross-val on each value of kappaList given a dataset from the database
+    id = Database ID for training data
+    whiten = perform ZCA and feature selection on features (True/False)
+    kappaList = list of kappa values to try
+    """
 
     if ~isinstance(whiten,bool):
         whiten = str(whiten) in ['TRUE','True','true','t','T', '1','Yes','Y','y','yes','YES','yeah','yup', 'certainly', 'uh-huh']
